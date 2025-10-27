@@ -1,0 +1,20 @@
+[project]
+name = "python-code-explainer"
+version = "0.1.0"
+description = "Paste Python, get a step-by-step explanation. Optional LLM + sandboxed run."
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = ["E","F","W","I","UP","N","B"]
+fix = true
+
+[tool.ruff.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"

@@ -4,6 +4,8 @@ import os
 from contextlib import redirect_stdout
 
 import streamlit as st
+from dotenv import load_dotenv
+load_dotenv()  # load .env if present
 
 # --- App title & intro ---
 st.set_page_config(page_title="Python Code Explainer", page_icon="🐍")
@@ -49,19 +51,18 @@ def static_checks(tree: ast.AST):
             # Direct name calls (e.g., eval(...))
             if isinstance(node.func, ast.Name) and node.func.id in DANGEROUS_NAMES:
                 raise SafetyError(f"Use of '{node.func.id}()' is not allowed in sandbox mode.")
-            # Attribute calls (e.g., os.system(...), sys.argv.__class__(), etc.)
+            # Attribute calls (e.g., os.system(...))
             if isinstance(node.func, ast.Attribute):
-                # x.y(...), flag if parent x is a dangerous module name
                 if isinstance(node.func.value, ast.Name) and node.func.value.id in DANGEROUS_ATTR_PARENTS:
                     raise SafetyError(f"Access to '{node.func.value.id}.{node.func.attr}()' is not allowed in sandbox mode.")
         # Attribute access like os.path, sys.modules, etc.
         if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
             if node.value.id in DANGEROUS_ATTR_PARENTS:
                 raise SafetyError(f"Access to '{node.value.id}.{node.attr}' is not allowed in sandbox mode.")
-        # With / AsyncWith (could open files, etc.) — conservatively disallow
+        # With / AsyncWith (conservatively disallow file-like contexts)
         if isinstance(node, (ast.With, ast.AsyncWith)):
             raise SafetyError("with/async with blocks are not allowed in sandbox mode.")
-        # Try/Except is okay for learning, but can hide attacks; allow it.
+        # Try/Except allowed for pedagogy
 
 def analyze_code_structure(tree: ast.AST) -> dict:
     """Collect simple structural facts for an offline explanation."""
@@ -92,7 +93,6 @@ def analyze_code_structure(tree: ast.AST) -> dict:
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             info["imports"] += 1
         elif isinstance(node, ast.Call):
-            # record function name when obvious
             if isinstance(node.func, ast.Name):
                 info["calls"].add(node.func.id)
             elif isinstance(node.func, ast.Attribute):
@@ -133,29 +133,32 @@ def offline_explain(code: str) -> str:
     if info["imports"]:
         lines.append(f"- Imports present: {info['imports']} (won't run in sandbox)")
 
-    # Heuristic: Big-O hints (very rough)
     big_o = "O(1) to O(n) typical"
     if info["loops"] >= 2:
         big_o = "O(n·m) or O(n²) depending on nesting"
     lines.append(f"- Complexity (rough heuristic): {big_o}")
 
-    # Tips
     lines.append("\n**Tips:**")
     lines.append("- Add docstrings to functions to clarify intent.")
     lines.append("- Prefer list comprehensions or generator expressions where it makes code clearer.")
     lines.append("- Keep I/O separate from pure logic to simplify testing.")
     return "\n".join(lines)
 
-# --- Optional: LLM explanation (uses OpenAI if key available) ---
-
 def llm_explain(code: str) -> str:
     """Explain code with an LLM if OPENAI_API_KEY is set, else fallback."""
-    api_key = os.getenv("OPENAI_API_KEY")
+    # Try Streamlit secrets first, then environment
+    api_key = None
+    try:
+        api_key = st.secrets.get("OPENAI_API_KEY", None)  # type: ignore[attr-defined]
+    except Exception:
+        api_key = None
     if not api_key:
-        return None
+        api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key:
+        return "No OpenAI API key found. Add OPENAI_API_KEY to Streamlit secrets or environment."
 
     try:
-        # OpenAI SDK v1
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         system = (
@@ -164,13 +167,13 @@ def llm_explain(code: str) -> str:
             "Keep it concise and actionable."
         )
         user = (
-            "Explain this Python code for a beginner:\n\n"
-            f"{code}\n\n"
-            "Format:\n"
-            "1) Summary (2–3 sentences)\n"
-            "2) Step-by-step walkthrough (bullets)\n"
-            "3) Key concepts learned\n"
-            "4) Potential bugs / edge cases\n"
+            "Explain this Python code for a beginner:\\n\\n"
+            f"{code}\\n\\n"
+            "Format:\\n"
+            "1) Summary (2–3 sentences)\\n"
+            "2) Step-by-step walkthrough (bullets)\\n"
+            "3) Key concepts learned\\n"
+            "4) Potential bugs / edge cases\\n"
             "5) Tiny refactor suggestions"
         )
 
@@ -182,7 +185,7 @@ def llm_explain(code: str) -> str:
         )
         return resp.choices[0].message.content
     except Exception as e:
-        return f"(LLM explanation unavailable: {e})"
+        return f"(LLM explanation failed: {type(e).__name__}: {e})"
 
 # --- UI ---
 

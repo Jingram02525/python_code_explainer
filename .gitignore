@@ -1,4 +1,3 @@
-# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -7,7 +6,5 @@ __pycache__/
 .venv/
 venv/
 .env
-# OS
 .DS_Store
-# Streamlit cache
 .streamlit/

@@ -1,31 +1,29 @@
 # Python Code Explainer (Streamlit)
 
-A tiny app you can build in minutes: paste Python, get a structured explanation. Optionally run the snippet in a minimal sandbox. Optionally use an LLM for richer explanations.
+Paste Python, get a structured explanation. Optionally run in a minimal sandbox and toggle LLM mode for a richer walkthrough.
 
 ## Quickstart
 
 ```bash
-# 1) Create & activate a virtualenv (recommended)
-python3 -m venv .venv && source .venv/bin/activate   # on Windows: .venv\Scripts\activate
-
-# 2) Install deps
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# 3) (Optional) Use an LLM for richer explanations
-export OPENAI_API_KEY=YOUR_KEY_HERE   # on Windows: set OPENAI_API_KEY=YOUR_KEY_HERE
-
-# 4) Run
+# optional
+export OPENAI_API_KEY=YOUR_KEY   # Windows: set OPENAI_API_KEY=YOUR_KEY
 streamlit run app.py
 ```
 
-Open the local URL Streamlit prints (usually http://localhost:8501).
-
 ## Features
-- **Offline explainer**: AST-based structural summary (no API key required).
+- **Offline explainer**: AST-based structure (no API key required).
 - **LLM explainer**: Toggle on for step-by-step, beginner-friendly narration.
-- **Sandboxed run**: Executes code with restricted builtins and static checks.
-- **Teaching-friendly**: Shows structure, calls, loops, and rough complexity hints.
+- **Sandboxed run**: Restricted builtins + static checks (educational, not hardened).
 
-## Notes
-- The sandbox is intentionally conservative. No imports, file or network access.
-- For the LLM mode, you can edit the model name in `app.py` if desired.
+---
+## Dev Quality
+- Lint: `ruff check .` • Format: `ruff format .` • Tests: `pytest`
+- Pre-commit hooks: `pre-commit install`
+
+## CI
+GitHub Actions runs Ruff + Pytest on every push/PR (`.github/workflows/ci.yml`).
+
+## Security Notes
+No imports or system access in sandbox; treat as educational, not a hardened sandbox.
